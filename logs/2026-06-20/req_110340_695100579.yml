@@ -1,0 +1,28 @@
+timestamp: "2026-06-20 11:03:40.695"
+method: GET
+protocol: HTTP/1.1
+path: /status
+remote_address: 127.0.0.1:46544
+headers:
+  Accept:
+    - text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Encoding:
+    - gzip, deflate, br, zstd
+  Accept-Language:
+    - en-US,en;q=0.9
+  Connection:
+    - keep-alive
+  Priority:
+    - u=0, i
+  Sec-Fetch-Dest:
+    - document
+  Sec-Fetch-Mode:
+    - navigate
+  Sec-Fetch-Site:
+    - none
+  Sec-Fetch-User:
+    - ?1
+  Upgrade-Insecure-Requests:
+    - "1"
+  User-Agent:
+    - Mozilla/5.0 (X11; Linux x86_64; rv:151.0) Gecko/20100101 Firefox/151.0
