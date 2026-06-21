@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"gitops/database"
 	"io"
 	"log"
 	"net/http"
@@ -29,12 +30,23 @@ type StatusResponse struct {
 }
 
 func main() {
+
+	database.InitDB()
+	defer database.DB.Close()
+
+	
 	http.HandleFunc("/status", statusHandler)
+	http.HandleFunc("/", root)
 
 	fmt.Println("🚀 Advanced YAML logger initiated! Server running on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Server failed to start: %v\n", err)
 	}
+}
+
+func root(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Welcome to the API Server!"))
 }
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +57,8 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 
 	var bodyBytes []byte
 	if r.Body != nil {
+		// [FIX] রিকোয়েস্ট বডি রিসোর্স লিক এড়াতে ক্লোজ করা নিশ্চিত করুন
+		defer r.Body.Close()
 		bodyBytes, _ = io.ReadAll(r.Body)
 	}
 
@@ -93,6 +107,7 @@ func saveLogToUniqueYAML(logItem Layer7Log, now time.Time) {
 
 	encoder := yaml.NewEncoder(file)
 	encoder.SetIndent(2)
+	defer encoder.Close()
 
 	if err := encoder.Encode(logItem); err != nil {
 		log.Printf("[ERROR] Failed to encode YAML: %v\n", err)
