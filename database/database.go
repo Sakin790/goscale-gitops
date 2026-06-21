@@ -12,7 +12,6 @@ import (
 
 var DB *sqlx.DB
 
-// 10,000 capacity-r buffer channel
 var LogQueue = make(chan DbLog, 10000)
 
 type DbLog struct {
@@ -39,11 +38,8 @@ func InitDB() {
 	DB.SetMaxIdleConns(5)
 	fmt.Println("✅ [DATABASE] Connected successfully via sqlx!")
 }
-
-// StartBufferLogWorker: 10 second and 10 items configuration for instant test
 func StartBufferLogWorker() {
 	go func() {
-		// 🕒 [UPDATED] 1 minute-er jaygay 10 second kora holo
 		ticker := time.NewTicker(10 * time.Second)
 		var batch []DbLog
 
@@ -51,15 +47,13 @@ func StartBufferLogWorker() {
 			select {
 			case logItem := <-LogQueue:
 				batch = append(batch, logItem)
-
-				// 🚀 [UPDATED] 10 ta data hoye gele sathe sathe DB-te pathiye debe
 				if len(batch) >= 10 {
 					flushLogs(batch)
 					batch = nil
 				}
 
 			case <-ticker.C:
-				// Protiti 10 second por por auto-trigger hobe
+
 				if len(batch) > 0 {
 					flushLogs(batch)
 					batch = nil

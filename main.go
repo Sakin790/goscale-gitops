@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"gitops/database" // আপনার মডিউলের পাথ
+	"gitops/database" 
 )
 
 type StatusResponse struct {
@@ -20,7 +20,6 @@ func main() {
 	database.InitDB()
 	defer database.DB.Close()
 
-	// 🚀 ব্যাকগ্রাউন্ড মেমোরি বাফার ওয়ার্কার চালু করা হলো
 	database.StartBufferLogWorker()
 
 	http.HandleFunc("/status", statusHandler)
@@ -43,14 +42,14 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// [FIXED] অব্যবহৃত bodyBytes এবং r.Body রিড করার পার্টটি বাদ দেওয়া হয়েছে
+	
 	if r.Body != nil {
 		defer r.Body.Close()
 	}
 
 	now := time.Now()
 
-	// ডাটাবেজের DbLog স্ট্রাকট অনুযায়ী মেমোরি অবজেক্ট তৈরি
+
 	logItem := database.DbLog{
 		Timestamp:     now,
 		Method:        r.Method,
@@ -59,10 +58,8 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 		RemoteAddress: r.RemoteAddr,
 	}
 
-	// ⚡ বাফার চ্যানেলে ডাটা পুশ (Non-blocking)
 	database.LogQueue <- logItem
 
-	// ক্লায়েন্টকে ফাস্ট রেসপন্স ব্যাক করা
 	w.Header().Set("Content-Type", "application/json")
 	response := StatusResponse{
 		Status:    "success",
