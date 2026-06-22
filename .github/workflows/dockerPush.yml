@@ -1,0 +1,21 @@
+name: DevSecOps CI/CD Pipeline
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  smoke-test:
+    name: Initial Pipeline & Echo Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Run Hello Echo Test
+      run: |
+        echo "🚀 Sakin's DevSecOps Pipeline Triggered Successfully on main branch!"
+        echo "📂 Checking current directory structure..."
+        ls -la
