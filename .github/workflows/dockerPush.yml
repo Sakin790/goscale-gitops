@@ -1,4 +1,5 @@
 name: DevSecOps CI/CD Pipeline
+
 on:
   push:
     branches: [ "main" ]
@@ -6,16 +7,54 @@ on:
     branches: [ "main" ]
 
 jobs:
-  smoke-test:
-    name: Initial Pipeline & Echo Test
+  # 🛡️ স্টেপ ১: সিকিউরিটি অডিট এবং টেস্ট (Build & OWASP Audit)
+  security-and-test:
+    name: Go Build & OWASP Security Audit
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Run Hello Echo Test
+    - name: Set up Go Runtime
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26' # আপনার Dockerfile এর সাথে মিল রেখে
+
+    - name: Install Dependencies
+      run: go mod download
+
+    # 🔍 [OWASP Standard] গো-এর অফিশিয়াল সিকিউরিটি ভালনারেবিলিটি স্ক্যানার
+    - name: Run OWASP/Govulncheck Security Audit
       run: |
-        echo "🚀 Sakin's DevSecOps Pipeline Triggered Successfully on main branch!"
-        echo "📂 Checking current directory structure..."
-        ls -la
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck ./...
+
+    - name: Run Unit Tests
+      run: go test -v ./...
+
+  # 🐳 স্টেপ ২: ডকার বিল্ড এবং ট্রিভি স্ক্যান (Docker Build & Trivy Scan)
+  docker-build-and-scan:
+    name: Docker Build & Trivy Vulnerability Scan
+    needs: security-and-test # প্রথম জব পাস করলেই কেবল এই জবটি চলবে
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 🛠️ ডকার ইমেজ লোকালি বিল্ড করা
+    - name: Build Local Docker Image
+      run: |
+        docker build -t goscale-api:${{ github.sha }} .
+
+    # 🔬 [TRIVY SCAN] ইমেজের ভেতর কোনো ওএস বা প্যাকেজ লেভেলের লিক আছে কিনা তা চেক করা
+    - name: Run Trivy Vulnerability Scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'goscale-api:${{ github.sha }}'
+        format: 'table'
+        exit-code: '1' # যদি কোনো HIGH বা CRITICAL বাগ থাকে, তবে পাইপলাইন ফেইল করবে (নিরাপত্তার জন্য)
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
