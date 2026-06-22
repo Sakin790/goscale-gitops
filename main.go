@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"gitops/database" 
+	"gitops/database"
+	"gitops/handlers"
 )
 
 type StatusResponse struct {
@@ -23,17 +24,12 @@ func main() {
 	database.StartBufferLogWorker()
 
 	http.HandleFunc("/status", statusHandler)
-	http.HandleFunc("/", root)
+	http.HandleFunc("/", handlers.Root)
 
 	fmt.Println("🚀 High-Performance Buffer Engine initiated! Server running on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Server failed to start: %v\n", err)
 	}
-}
-
-func root(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Welcome to the API Server!"))
 }
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
@@ -42,13 +38,11 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
 	if r.Body != nil {
 		defer r.Body.Close()
 	}
 
 	now := time.Now()
-
 
 	logItem := database.DbLog{
 		Timestamp:     now,
