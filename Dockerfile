@@ -15,7 +15,7 @@ COPY . .
 RUN go build -ldflags="-s -w" -o /go-api main.go
 
 #---------------------------------------------
-FROM alpine:3.19
+FROM alpine:3.21
 
 RUN apk --no-cache add ca-certificates tzdata && \
     addgroup -S appgroup && \
