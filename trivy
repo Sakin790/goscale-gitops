@@ -1,0 +1,6 @@
+trivy fs --severity HIGH,CRITICAL .
+trivy config Dockerfile
+
+trivy fs --format json -o result.json .  : puro file check korbe with report generate korbe
+
+trivy config --format json -o output.json Dockerfile : Sudhu Dockerfile check korbe
