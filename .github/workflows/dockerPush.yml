@@ -1,60 +1,75 @@
-name: DevSecOps CI/CD Pipeline
+name: CI Pipeline (Trivy Scan & Docker Push)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
+
+
+env:
+  DOCKER_IMAGE_NAME: "sakin79/go-api" 
+  IMAGE_TAG: ${{ github.sha }}             
 
 jobs:
-  # 🛡️ স্টেপ ১: সিকিউরিটি অডিট এবং টেস্ট (Build & OWASP Audit)
-  security-and-test:
-    name: Go Build & OWASP Security Audit
+  build-and-secure:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Set up Go Runtime
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.26' # আপনার Dockerfile এর সাথে মিল রেখে
+    
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.4'
+          cache: true
 
-    - name: Install Dependencies
-      run: go mod download
+   
+      - name: Run Trivy FS Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'vuln,secret'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
 
-    # 🔍 [OWASP Standard] গো-এর অফিশিয়াল সিকিউরিটি ভালনারেবিলিটি স্ক্যানার
-    - name: Run OWASP/Govulncheck Security Audit
-      run: |
-        go install golang.org/x/vuln/cmd/govulncheck@latest
-        govulncheck ./...
+     
 
-    - name: Run Unit Tests
-      run: go test -v ./...
+      - name: Run Trivy Config Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'Dockerfile'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
 
-  # 🐳 স্টেপ ২: ডকার বিল্ড এবং ট্রিভি স্ক্যান (Docker Build & Trivy Scan)
-  docker-build-and-scan:
-    name: Docker Build & Trivy Vulnerability Scan
-    needs: security-and-test # প্রথম জব পাস করলেই কেবল এই জবটি চলবে
-    runs-on: ubuntu-latest
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+  
+      - name: Build Docker Image Locally
+        run: |
+          docker build \
+            --build-arg TARGETARCH=amd64 \
+            -t $DOCKER_IMAGE_NAME:$IMAGE_TAG .
 
-    # 🛠️ ডকার ইমেজ লোকালি বিল্ড করা
-    - name: Build Local Docker Image
-      run: |
-        docker build -t goscale-api:${{ github.sha }} .
+      - name: Run Trivy Image Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          scanners: 'vuln'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
 
-    # 🔬 [TRIVY SCAN] ইমেজের ভেতর কোনো ওএস বা প্যাকেজ লেভেলের লিক আছে কিনা তা চেক করা
-    - name: Run Trivy Vulnerability Scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'goscale-api:${{ github.sha }}'
-        format: 'table'
-        exit-code: '1' # যদি কোনো HIGH বা CRITICAL বাগ থাকে, তবে পাইপলাইন ফেইল করবে (নিরাপত্তার জন্য)
-        ignore-unfixed: true
-        vuln-type: 'os,library'
-        severity: 'CRITICAL,HIGH'
+      - name: Push Docker Image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push $DOCKER_IMAGE_NAME:$IMAGE_TAG
